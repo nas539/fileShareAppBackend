@@ -6,7 +6,7 @@ from flask_heroku import Heroku
 import io
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = ""
+app.config["SQLALCHEMY_DATABASE_URI"] = "postgres://iozprlkgpixzbx:d3ac6929f6ebc621a5ef36f597a2dedc96347670dc0d5a2f44188710c3bd8e6a@ec2-3-216-129-140.compute-1.amazonaws.com:5432/d5g69tfq3bbplh"
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
@@ -33,6 +33,22 @@ file_schema = FileSchema()
 files_schema = FileSchema(many=True)
 
 
+@app.route("/file/add", methods=["POST"])
+def add_file():
+    name = request.form.get("name")
+    file_type = request.form.get("type")
+    data = request.files.get("data")
+
+    new_file = File(name, file_type, data.read())
+    db.session.add(new_file)
+    db.session.commit()
+
+    return jsonify("File added!")
+
+@app.route("/file/get/data", methods=["GET"])
+def get_file_data():
+    file_data = db.session.query(File).all()
+    return jsonify(files_schema.dump(file_data))
 
 if __name__ == "__main__":
     app.run(debug=True)
