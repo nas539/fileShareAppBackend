@@ -50,5 +50,14 @@ def get_file_data():
     file_data = db.session.query(File).all()
     return jsonify(files_schema.dump(file_data))
 
+
+@app.route("/file/get/<id>", methods=["GET"])
+def get_file(id):
+    file_data = db.session.query(File).filter(File.id == id).first()
+    return send_file(io.BytesIO(file_data.data), 
+                     attachment_filename=file_data.name,
+                     mimetype=file_data.file_type)
+
+
 if __name__ == "__main__":
     app.run(debug=True)
