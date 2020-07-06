@@ -19,11 +19,13 @@ class File(db.Model):
     name = db.Column(db.String(), nullable=False)
     file_type = db.Column(db.String(), nullable=False)
     data = db.Column(db.LargeBinary, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
 
-    def __init__(self, name, file_type, data):
+    def __init__(self, name, file_type, data, user_id):
         self.name = name
         self.file_type = file_type
         self.data = data
+        self.user_id = user_id
 
 class FileSchema(ma.Schema):
     class Meta:
@@ -31,6 +33,25 @@ class FileSchema(ma.Schema):
 
 file_schema = FileSchema()
 files_schema = FileSchema(many=True)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(20), nullable=False, unique=True)
+    password = db.Column(db.String(), nullable=False)
+    files = db.relationship("File", cascade="all,delete", backref="user", lazy=True)
+
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
+
+class UserSchema(ma.Schema):
+    class Meta:
+        fields = ("id", "username", "password")
+
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
+
+
 
 
 @app.route("/file/add", methods=["POST"])
@@ -64,6 +85,31 @@ def delete_file(id):
     db.session.delete(file_data)
     db.session.commit()
     return jsonify("FileDeleted")
+
+@app.route("/user/create", methods=["POST"])
+def create_user():
+    if request.content_type != "application/json":
+        return jsonify("Error")
+
+    post_data = request.get_json()
+    username = post_data.get("username")
+    password = post_data.get("password")
+
+    record = User(username, password)
+    db.session.add(record)
+    db.session.commit()
+
+    return jsonify("User created")
+
+@app.route("/user/get", methods=["GET"])
+def get_all_users():
+    all_users = db.session.query(User).all()
+    return jsonify(users_schema.dump(all_users))
+
+@app.route("/user/get/<id>", methods=["GET"])
+def get_user_by_id(id):
+    user = db.session.query(User).filter(User.id == id).first()
+    return jsonify(user_schema.dump(user))
 
 if __name__ == "__main__":
     app.run(debug=True)
